@@ -1,5 +1,8 @@
 package com.yalantis.ucrop;
 
+import android.animation.Animator;
+import android.animation.AnimatorInflater;
+import android.animation.AnimatorSet;
 import android.annotation.TargetApi;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -32,6 +35,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.yalantis.ucrop.callback.BitmapCropCallback;
 import com.yalantis.ucrop.model.AspectRatio;
@@ -64,6 +68,9 @@ public class UCropActivity extends AppCompatActivity {
     public static final int SCALE = 1;
     public static final int ROTATE = 2;
     public static final int ALL = 3;
+    private AnimatorSet horiz_flip_fw,horiz_flip_bw,vert_flip_fw,vert_flip_bw;
+    private Boolean isAnimate = false;
+    Boolean flip_vert=false,flip_horiz  =false;
 
     @IntDef({NONE, SCALE, ROTATE, ALL})
     @Retention(RetentionPolicy.SOURCE)
@@ -98,9 +105,10 @@ public class UCropActivity extends AppCompatActivity {
     private UCropView mUCropView;
     private GestureCropImageView mGestureCropImageView;
     private OverlayView mOverlayView;
-    private ViewGroup mWrapperStateAspectRatio, mWrapperStateRotate, mWrapperStateScale;
-    private ViewGroup mLayoutAspectRatio, mLayoutRotate, mLayoutScale;
+    private ViewGroup mWrapperStateAspectRatio, mWrapperStateRotate, mWrapperStateScale,mWrapperFlip;
+    private ViewGroup mLayoutAspectRatio, mLayoutRotate, mLayoutScale,mLayoutFlip;
     private List<ViewGroup> mCropAspectRatioViews = new ArrayList<>();
+    private List<ViewGroup> mFlipViews = new ArrayList<>();
     private TextView mTextViewRotateAngle, mTextViewScalePercent;
     private View mBlockingView;
 
@@ -114,6 +122,11 @@ public class UCropActivity extends AppCompatActivity {
         setContentView(R.layout.ucrop_activity_photobox);
 
         final Intent intent = getIntent();
+
+        horiz_flip_fw = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.flip_horiz);
+        horiz_flip_bw = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.flip_horiz_rev);
+        vert_flip_fw = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.flip_vert);
+        vert_flip_bw = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.flip_vert_rev);
 
         setupViews(intent);
         setImageData(intent);
@@ -291,18 +304,22 @@ public class UCropActivity extends AppCompatActivity {
 
             mWrapperStateAspectRatio = findViewById(R.id.state_aspect_ratio);
             mWrapperStateAspectRatio.setOnClickListener(mStateClickListener);
+            mWrapperFlip = findViewById(R.id.state_flip);
+            mWrapperFlip.setOnClickListener(mStateClickListener);
             mWrapperStateRotate = findViewById(R.id.state_rotate);
             mWrapperStateRotate.setOnClickListener(mStateClickListener);
             mWrapperStateScale = findViewById(R.id.state_scale);
             mWrapperStateScale.setOnClickListener(mStateClickListener);
 
             mLayoutAspectRatio = findViewById(R.id.layout_aspect_ratio);
+            mLayoutFlip = findViewById(R.id.layout_flip);
             mLayoutRotate = findViewById(R.id.layout_rotate_wheel);
             mLayoutScale = findViewById(R.id.layout_scale_wheel);
 
             setupAspectRatioWidget(intent);
             setupRotateWidget();
             setupScaleWidget();
+            setupFlipWidget();
             setupStatesWrapper();
         }
     }
@@ -337,8 +354,10 @@ public class UCropActivity extends AppCompatActivity {
 
     private void initiateRootViews() {
         mUCropView = findViewById(R.id.ucrop);
+        float scale = getResources().getDisplayMetrics().density * 8000;
         mGestureCropImageView = mUCropView.getCropImageView();
         mOverlayView = mUCropView.getOverlayView();
+        mGestureCropImageView.setCameraDistance(scale);
 
         mGestureCropImageView.setTransformImageListener(mImageListener);
 
@@ -381,10 +400,12 @@ public class UCropActivity extends AppCompatActivity {
         ImageView stateScaleImageView = findViewById(R.id.image_view_state_scale);
         ImageView stateRotateImageView = findViewById(R.id.image_view_state_rotate);
         ImageView stateAspectRatioImageView = findViewById(R.id.image_view_state_aspect_ratio);
+        ImageView stateFlipImageView = findViewById(R.id.image_view_state_flip);
 
         stateScaleImageView.setImageDrawable(new SelectedStateListDrawable(stateScaleImageView.getDrawable(), mActiveWidgetColor));
         stateRotateImageView.setImageDrawable(new SelectedStateListDrawable(stateRotateImageView.getDrawable(), mActiveWidgetColor));
         stateAspectRatioImageView.setImageDrawable(new SelectedStateListDrawable(stateAspectRatioImageView.getDrawable(), mActiveWidgetColor));
+        stateFlipImageView.setImageDrawable(new SelectedStateListDrawable(stateFlipImageView.getDrawable(), mActiveWidgetColor));
     }
 
 
@@ -450,6 +471,173 @@ public class UCropActivity extends AppCompatActivity {
                     if (!v.isSelected()) {
                         for (ViewGroup cropAspectRatioView : mCropAspectRatioViews) {
                             cropAspectRatioView.setSelected(cropAspectRatioView == v);
+                        }
+                    }
+                }
+            });
+        }
+    }
+    private void setupFlipWidget() {
+
+        ArrayList<String> flipList = new ArrayList<>();
+
+        flipList.add("FLIP HORIZONTAL");
+        flipList.add("FLIP VERTICAL");
+
+
+        LinearLayout wrapperAspectRatioList = findViewById(R.id.layout_flip);
+
+        FrameLayout wrapperFlip;
+        AspectRatioTextView aspectRatioTextView;
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT);
+        lp.weight = 1;
+        int count =1;
+        for (String flip : flipList) {
+            wrapperFlip = (FrameLayout) getLayoutInflater().inflate(R.layout.ucrop_aspect_ratio, null);
+            if(count==1) {
+                wrapperFlip.setId(R.id.ucrop_flip_horiz_id);
+            }
+            else{
+                wrapperFlip.setId(R.id.ucrop_flip_vert_id);
+            }
+            count+=1;
+            wrapperFlip.setLayoutParams(lp);
+            aspectRatioTextView = ((AspectRatioTextView) wrapperFlip.getChildAt(0));
+            aspectRatioTextView.setActiveColor(mActiveWidgetColor);
+            aspectRatioTextView.setText(flip);
+
+            wrapperAspectRatioList.addView(wrapperFlip);
+            mFlipViews.add(wrapperFlip);
+        }
+
+        mFlipViews.get(0).setSelected(true);
+
+        for (ViewGroup flipView : mFlipViews) {
+            flipView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+
+                    if(v.getId()==R.id.ucrop_flip_vert_id) {
+                        try {
+                            if (flip_vert && !isAnimate) {
+                                flip_vert = false;
+                                vert_flip_bw.setTarget(mGestureCropImageView);
+                                vert_flip_bw.addListener(new Animator.AnimatorListener() {
+                                    @Override
+                                    public void onAnimationStart(Animator animation) {
+                                        isAnimate = true;
+                                    }
+
+                                    @Override
+                                    public void onAnimationEnd(Animator animation) {
+                                        isAnimate = false;
+                                    }
+
+                                    @Override
+                                    public void onAnimationCancel(Animator animation) {
+
+                                    }
+
+                                    @Override
+                                    public void onAnimationRepeat(Animator animation) {
+
+                                    }
+                                });
+                                vert_flip_bw.start();
+
+                            } else if (!isAnimate) {
+                                flip_vert = true;
+                                vert_flip_fw.setTarget(mGestureCropImageView);
+                                vert_flip_fw.addListener(new Animator.AnimatorListener() {
+                                    @Override
+                                    public void onAnimationStart(Animator animation) {
+                                        isAnimate = false;
+                                    }
+
+                                    @Override
+                                    public void onAnimationEnd(Animator animation) {
+                                        isAnimate = false;
+                                    }
+
+                                    @Override
+                                    public void onAnimationCancel(Animator animation) {
+
+                                    }
+
+                                    @Override
+                                    public void onAnimationRepeat(Animator animation) {
+
+                                    }
+                                });
+                                vert_flip_fw.start();
+                            }
+                        }catch (Exception e){
+                            Toast.makeText(UCropActivity.this, "This image is larger to process in original size. Please choose a scaled down version", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                    else if(v.getId()==R.id.ucrop_flip_horiz_id){
+                        try {
+                            if (flip_horiz && !isAnimate) {
+                                flip_horiz = false;
+                                horiz_flip_bw.setTarget(mGestureCropImageView);
+                                horiz_flip_bw.addListener(new Animator.AnimatorListener() {
+                                    @Override
+                                    public void onAnimationStart(Animator animation) {
+                                        isAnimate = true;
+                                    }
+
+                                    @Override
+                                    public void onAnimationEnd(Animator animation) {
+                                        isAnimate = false;
+                                    }
+
+                                    @Override
+                                    public void onAnimationCancel(Animator animation) {
+
+                                    }
+
+                                    @Override
+                                    public void onAnimationRepeat(Animator animation) {
+
+                                    }
+                                });
+                                horiz_flip_bw.start();
+
+                            } else if (!isAnimate) {
+                                flip_horiz = true;
+                                horiz_flip_fw.setTarget(mGestureCropImageView);
+                                horiz_flip_fw.addListener(new Animator.AnimatorListener() {
+                                    @Override
+                                    public void onAnimationStart(Animator animation) {
+                                        isAnimate = true;
+                                    }
+
+                                    @Override
+                                    public void onAnimationEnd(Animator animation) {
+                                        isAnimate = false;
+                                    }
+
+                                    @Override
+                                    public void onAnimationCancel(Animator animation) {
+
+                                    }
+
+                                    @Override
+                                    public void onAnimationRepeat(Animator animation) {
+
+                                    }
+                                });
+                                horiz_flip_fw.start();
+                            }
+                        }catch (Exception e){
+                            Toast.makeText(UCropActivity.this, "This image is larger to process in original size. Please choose a scaled down version", Toast.LENGTH_SHORT).show();
+                        }
+
+                    }
+                    mGestureCropImageView.setImageToWrapCropBounds();
+                    if (!v.isSelected()) {
+                        for (ViewGroup flipView : mFlipViews) {
+                            flipView.setSelected(flipView == v);
                         }
                     }
                 }
@@ -568,6 +756,7 @@ public class UCropActivity extends AppCompatActivity {
     private void setWidgetState(@IdRes int stateViewId) {
         if (!mShowBottomControls) return;
 
+        mWrapperFlip.setSelected(stateViewId == R.id.state_flip);
         mWrapperStateAspectRatio.setSelected(stateViewId == R.id.state_aspect_ratio);
         mWrapperStateRotate.setSelected(stateViewId == R.id.state_rotate);
         mWrapperStateScale.setSelected(stateViewId == R.id.state_scale);
@@ -575,6 +764,7 @@ public class UCropActivity extends AppCompatActivity {
         mLayoutAspectRatio.setVisibility(stateViewId == R.id.state_aspect_ratio ? View.VISIBLE : View.GONE);
         mLayoutRotate.setVisibility(stateViewId == R.id.state_rotate ? View.VISIBLE : View.GONE);
         mLayoutScale.setVisibility(stateViewId == R.id.state_scale ? View.VISIBLE : View.GONE);
+        mLayoutFlip.setVisibility(stateViewId == R.id.state_flip ? View.VISIBLE : View.GONE);
 
         if (stateViewId == R.id.state_scale) {
             setAllowedGestures(0);
@@ -612,7 +802,7 @@ public class UCropActivity extends AppCompatActivity {
         mShowLoader = true;
         supportInvalidateOptionsMenu();
 
-        mGestureCropImageView.cropAndSaveImage(mCompressFormat, mCompressQuality, new BitmapCropCallback() {
+        mGestureCropImageView.cropAndSaveImage(mCompressFormat, mCompressQuality,flip_horiz,flip_vert, new BitmapCropCallback() {
 
             @Override
             public void onBitmapCropped(@NonNull Uri resultUri, int offsetX, int offsetY, int imageWidth, int imageHeight) {

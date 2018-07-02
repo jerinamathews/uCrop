@@ -497,7 +497,7 @@ public class UCropFragment extends Fragment {
         mBlockingView.setClickable(true);
         callback.loadingProgress(true);
 
-        mGestureCropImageView.cropAndSaveImage(mCompressFormat, mCompressQuality, new BitmapCropCallback() {
+        mGestureCropImageView.cropAndSaveImage(mCompressFormat, mCompressQuality,false,false, new BitmapCropCallback() {
 
             @Override
             public void onBitmapCropped(@NonNull Uri resultUri, int offsetX, int offsetY, int imageWidth, int imageHeight) {

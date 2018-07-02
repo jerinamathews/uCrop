@@ -68,7 +68,7 @@ public class CropImageView extends TransformImageView {
      * Cancels all current animations and sets image to fill crop area (without animation).
      * Then creates and executes {@link BitmapCropTask} with proper parameters.
      */
-    public void cropAndSaveImage(@NonNull Bitmap.CompressFormat compressFormat, int compressQuality,
+    public void cropAndSaveImage(@NonNull Bitmap.CompressFormat compressFormat, int compressQuality,Boolean flip_horiz,Boolean flip_vert,
                                  @Nullable BitmapCropCallback cropCallback) {
         cancelAllAnimations();
         setImageToWrapCropBounds(false);
@@ -82,7 +82,7 @@ public class CropImageView extends TransformImageView {
                 compressFormat, compressQuality,
                 getImageInputPath(), getImageOutputPath(), getExifInfo());
 
-        new BitmapCropTask(getViewBitmap(), imageState, cropParameters, cropCallback).execute();
+        new BitmapCropTask(getContext(),getViewBitmap(), imageState, cropParameters,flip_horiz,flip_vert, cropCallback).execute();
     }
 
     /**

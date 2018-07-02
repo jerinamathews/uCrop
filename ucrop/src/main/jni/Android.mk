@@ -1,5 +1,7 @@
 LOCAL_PATH := $(call my-dir)
 
+LOCAL_P := /usr/lib/
+
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := ucrop

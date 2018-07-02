@@ -123,10 +123,10 @@ public class UCropActivity extends AppCompatActivity {
 
         final Intent intent = getIntent();
 
-        horiz_flip_fw = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.flip_horiz);
-        horiz_flip_bw = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.flip_horiz_rev);
-        vert_flip_fw = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.flip_vert);
-        vert_flip_bw = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.flip_vert_rev);
+        horiz_flip_fw = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.ucrop_flip_horiz);
+        horiz_flip_bw = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.ucrop_flip_horiz_rev);
+        vert_flip_fw = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.ucrop_flip_vert);
+        vert_flip_bw = (AnimatorSet) AnimatorInflater.loadAnimator(this, R.animator.ucrop_flip_vert_rev);
 
         setupViews(intent);
         setImageData(intent);

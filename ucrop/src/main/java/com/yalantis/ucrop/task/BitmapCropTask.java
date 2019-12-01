@@ -27,6 +27,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Calendar;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.exifinterface.media.ExifInterface;
+
 /**
  * Crops part of image that fills the crop bounds.
  * <p/>
